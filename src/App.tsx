@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from './contexts/AuthContext';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import { Navbar } from './components/navbar';
 import { GeoapifyLocationPicker } from './components/geoapify-location-picker';
 import { TravelerCard } from './components/traveler-card';
@@ -16,7 +16,7 @@ import { Toaster } from './components/ui/sonner';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { Users, Star, MapPin, Calendar } from 'lucide-react';
 
-// Mock data (mockUser removed; use useAuth().profile for navbar user)
+// Mock data (navbar user from Clerk useUser)
 const mockTravelers = [
   {
     id: '1',
@@ -224,7 +224,8 @@ const mockEmptyUserProfile = {
 };
 
 export default function App() {
-  const { user, profile, signOut } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const [currentPage, setCurrentPage] = useState('home');
   const [currentLocation, setCurrentLocation] = useState('');
   const [destination, setDestination] = useState('');
@@ -236,10 +237,11 @@ export default function App() {
   const [nearbyTravelers, setNearbyTravelers] = useState(mockTravelers);
 
   // Navbar expects { name, avatar, yatraCoins, notifications, messages }
-  const navbarUser = user && profile ? {
-    name: profile.name,
-    avatar: profile.avatar ?? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.name)}`,
-    yatraCoins: profile.yatra_coins ?? 0,
+  const name = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') || user.primaryEmailAddress?.emailAddress || 'Traveler' : '';
+  const navbarUser = user ? {
+    name,
+    avatar: user.imageUrl ?? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+    yatraCoins: 0,
     notifications: 0,
     messages: 0,
   } : undefined;
@@ -673,6 +675,7 @@ export default function App() {
         isOwnProfile={selectedUser.id === '1'} // In real app, check against logged-in user
         onBack={handleBackFromProfile}
         onEdit={handleEditProfile}
+        onLogout={() => signOut?.({ redirectUrl: window.location.origin })}
         onConnect={handleConnect}
         onMessage={handleMessage}
       />
@@ -686,6 +689,7 @@ export default function App() {
         user={selectedUser}
         onBack={handleBackFromProfile}
         onSave={handleSaveProfile}
+        onLogout={() => signOut?.({ redirectUrl: window.location.origin })}
       />
     );
   }
@@ -697,7 +701,7 @@ export default function App() {
         user={navbarUser}
         currentPage={currentPage}
         onLogin={() => {}}
-        onLogout={signOut}
+        onLogout={() => signOut?.({ redirectUrl: window.location.origin })}
         onNavigate={handleNavigate}
       />
       

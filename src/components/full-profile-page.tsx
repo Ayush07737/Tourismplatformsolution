@@ -22,7 +22,8 @@ import {
   Clock,
   TrendingUp,
   Globe,
-  Map
+  Map,
+  LogOut
 } from 'lucide-react';
 
 interface FullProfilePageProps {
@@ -91,6 +92,7 @@ interface FullProfilePageProps {
   isOwnProfile?: boolean;
   onBack: () => void;
   onEdit?: () => void;
+  onLogout?: () => void;
   onConnect?: (userId: string) => void;
   onMessage?: (userId: string) => void;
 }
@@ -100,6 +102,7 @@ export function FullProfilePage({
   isOwnProfile = false,
   onBack,
   onEdit,
+  onLogout,
   onConnect,
   onMessage
 }: FullProfilePageProps) {
@@ -156,10 +159,18 @@ export function FullProfilePage({
                   </div>
                 </div>
                 {isOwnProfile ? (
-                  <Button onClick={onEdit}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={onEdit}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                    {onLogout && (
+                      <Button variant="outline" onClick={onLogout}>
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Log out
+                      </Button>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex gap-2">
                     <Button onClick={() => onConnect?.(user.id)}>

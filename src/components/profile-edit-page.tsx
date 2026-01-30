@@ -19,7 +19,8 @@ import {
   Image as ImageIcon,
   Star,
   Calendar,
-  Users
+  Users,
+  LogOut
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,9 +28,10 @@ interface ProfileEditPageProps {
   user: any;
   onBack: () => void;
   onSave: (updatedUser: any) => void;
+  onLogout?: () => void;
 }
 
-export function ProfileEditPage({ user, onBack, onSave }: ProfileEditPageProps) {
+export function ProfileEditPage({ user, onBack, onSave, onLogout }: ProfileEditPageProps) {
   const [editedUser, setEditedUser] = useState(user);
   const [activeTab, setActiveTab] = useState('basic');
 
@@ -196,10 +198,18 @@ export function ProfileEditPage({ user, onBack, onSave }: ProfileEditPageProps) 
               </Button>
               <h1 className="text-xl font-semibold">Edit Profile</h1>
             </div>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </Button>
+            <div className="flex items-center gap-2">
+              {onLogout && (
+                <Button variant="outline" onClick={onLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log out
+                </Button>
+              )}
+              <Button onClick={handleSave}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       </div>

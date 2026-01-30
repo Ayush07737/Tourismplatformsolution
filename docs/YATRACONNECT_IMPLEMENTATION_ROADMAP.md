@@ -69,16 +69,20 @@ This document maps the full YatraConnect spec to the current codebase and define
 
 ## Section 1 – Auth (Done)
 
-Implemented with **Supabase Auth**:
-- **`src/lib/supabase.ts`** – Browser Supabase client (uses existing `utils/supabase/info.tsx`).
-- **`src/contexts/AuthContext.tsx`** – `useAuth()` with `signUp`, `signIn`, `signOut`, `resetPassword`, `user`, `profile`, `loading`.
-- **`src/pages/Login.tsx`** – Email/password login, “Forgot password?” link, placeholders for Google/Facebook.
-- **`src/pages/Register.tsx`** – Name, email, phone (optional), password, preferred language; redirect to login after signup.
-- **`src/pages/ForgotPassword.tsx`** – Email field, sends reset link via Supabase.
-- **`src/components/ProtectedRoute.tsx`** – Redirects unauthenticated users to `/login`, shows spinner while auth loads.
-- **Routing** – `main.tsx` uses `react-router-dom`: public routes `/login`, `/register`, `/forgot-password`; all other paths wrapped in `ProtectedRoute` → App. Navbar uses real `user`/`profile` and `signOut`.
+Implemented with **Clerk** (email + Google and other social logins):
+- **`src/main.tsx`** – `ClerkProvider` with `VITE_CLERK_PUBLISHABLE_KEY`; routes: `/login` (SignIn), `/register` (SignUp), `/forgot-password` → redirect to `/login`, `/*` protected.
+- **`src/pages/Login.tsx`** – Clerk `<SignIn />` (email, Google, etc.; “Forgot password?” built in).
+- **`src/pages/Register.tsx`** – Clerk `<SignUp />`.
+- **`src/components/ProtectedRoute.tsx`** – Uses Clerk `useAuth()`; redirects to `/login` if not signed in.
+- **`src/App.tsx`** – Uses `useUser()` and `useClerk().signOut` for navbar user and sign-out.
+- **`.env.example`** – `VITE_CLERK_PUBLISHABLE_KEY` (get key from [Clerk Dashboard](https://dashboard.clerk.com)).
 
-**To run:** `npm install` (installs `react-router-dom`), then `npm run dev`. Open the app; you’ll be redirected to `/login` until you sign in. Enable Email auth (and optional confirmation) in Supabase Dashboard → Authentication.
+**To run:**
+1. Ensure `.env` has `VITE_CLERK_PUBLISHABLE_KEY=pk_test_...` (Vite only exposes `VITE_` prefixed vars).
+2. In [Clerk Dashboard](https://dashboard.clerk.com) → **Paths**: set Sign-in URL to `/login`, Sign-up URL to `/register`.
+3. In **Configure** → **Allowed redirect URLs**: add `http://localhost:5173` and your production URL.
+4. Enable Email and Google in **User & Authentication** → **Social connections**.
+5. Run `npm install` and `npm run dev`.
 
 ---
 
