@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from './contexts/AuthContext';
 import { Navbar } from './components/navbar';
 import { GeoapifyLocationPicker } from './components/geoapify-location-picker';
 import { TravelerCard } from './components/traveler-card';
@@ -15,15 +16,7 @@ import { Toaster } from './components/ui/sonner';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { Users, Star, MapPin, Calendar } from 'lucide-react';
 
-// Mock data
-const mockUser = {
-  name: 'Alex Johnson',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-  yatraCoins: 2450,
-  notifications: 3,
-  messages: 2
-};
-
+// Mock data (mockUser removed; use useAuth().profile for navbar user)
 const mockTravelers = [
   {
     id: '1',
@@ -231,7 +224,7 @@ const mockEmptyUserProfile = {
 };
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const { user, profile, signOut } = useAuth();
   const [currentPage, setCurrentPage] = useState('home');
   const [currentLocation, setCurrentLocation] = useState('');
   const [destination, setDestination] = useState('');
@@ -242,13 +235,14 @@ export default function App() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [nearbyTravelers, setNearbyTravelers] = useState(mockTravelers);
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-  };
+  // Navbar expects { name, avatar, yatraCoins, notifications, messages }
+  const navbarUser = user && profile ? {
+    name: profile.name,
+    avatar: profile.avatar ?? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.name)}`,
+    yatraCoins: profile.yatra_coins ?? 0,
+    notifications: 0,
+    messages: 0,
+  } : undefined;
 
   const handleConnect = (travelerId: string) => {
     alert(`Sending connection request to traveler ${travelerId}`);
@@ -700,10 +694,10 @@ export default function App() {
     <div className="min-h-screen bg-background">
       <Toaster />
       <Navbar 
-        user={isLoggedIn ? mockUser : undefined}
+        user={navbarUser}
         currentPage={currentPage}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
+        onLogin={() => {}}
+        onLogout={signOut}
         onNavigate={handleNavigate}
       />
       
