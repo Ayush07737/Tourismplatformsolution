@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { Navbar } from './components/navbar';
 import { GeoapifyLocationPicker } from './components/geoapify-location-picker';
-import { TravelerCard } from './components/traveler-card';
 import { DestinationCard } from './components/destination-card';
 import { UserProfileModal } from './components/user-profile-modal';
 import { FullProfilePage } from './components/full-profile-page';
@@ -15,6 +14,8 @@ import { Card } from './components/ui/card';
 import { Toaster } from './components/ui/sonner';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { Users, Star, MapPin, Calendar } from 'lucide-react';
+import { ExploreTripsPage } from './pages/ExploreTripsPage';
+import { CreateTripPage } from './pages/CreateTripPage';
 
 // Mock data (navbar user from Clerk useUser)
 const mockTravelers = [
@@ -518,26 +519,22 @@ export default function App() {
   );
 
   const renderExplorePage = () => (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-4">Explore Destinations</h1>
-      <p className="text-muted-foreground mb-8">Discover amazing places and plan your next adventure with fellow travelers</p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockDestinations.map((destination) => (
-          <DestinationCard
-            key={destination.id}
-            destination={destination}
-            onClick={handleDestinationClick}
-          />
-        ))}
-      </div>
-    </div>
+    <ExploreTripsPage />
   );
 
   const renderMyTripsPage = () => (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-4">My Trips</h1>
-      <p className="text-muted-foreground mb-8">Manage your travel plans and memories</p>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-4xl font-bold mb-1">My Trips</h1>
+          <p className="text-muted-foreground">
+            Manage your travel plans and memories
+          </p>
+        </div>
+        <Button onClick={() => handleNavigate('create-trip')}>
+          Post Trip
+        </Button>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="p-6">
@@ -595,6 +592,9 @@ export default function App() {
         <p className="text-muted-foreground mb-4">Start planning your first adventure!</p>
         <Button onClick={() => handleNavigate('explore')}>Explore Destinations</Button>
       </div>
+  const renderCreateTripPage = () => (
+    <CreateTripPage onTripCreated={() => handleNavigate('explore')} />
+  );
     </div>
   );
 
@@ -710,6 +710,7 @@ export default function App() {
       {currentPage === 'explore' && renderExplorePage()}
       {currentPage === 'mytrips' && renderMyTripsPage()}
       {currentPage === 'community' && renderCommunityPage()}
+      {currentPage === 'create-trip' && renderCreateTripPage()}
 
       {/* User Profile Modal */}
       {selectedUser && (
