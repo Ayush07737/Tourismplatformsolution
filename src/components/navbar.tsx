@@ -3,18 +3,9 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from './ui/dropdown-menu';
-import { 
   MapPin, 
   MessageCircle, 
-  Bell, 
-  User, 
-  Settings, 
-  LogOut, 
+  Bell,
   Coins,
   Menu
 } from 'lucide-react';
@@ -29,11 +20,11 @@ interface NavbarProps {
   };
   currentPage?: string;
   onLogin: () => void;
-  onLogout: () => void;
   onNavigate?: (page: string) => void;
+  onViewProfile?: () => void;
 }
 
-export function Navbar({ user, currentPage = 'home', onLogin, onLogout, onNavigate }: NavbarProps) {
+export function Navbar({ user, currentPage = 'home', onLogin, onNavigate, onViewProfile }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -103,31 +94,20 @@ export function Navbar({ user, currentPage = 'home', onLogin, onLogout, onNaviga
                   )}
                 </Button>
 
-                {/* User Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuItem>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={onLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* User Avatar - Clickable to Profile */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full"
+                  onClick={onViewProfile}
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback>
+                      {user.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
               </>
             ) : (
               <div className="flex items-center gap-2">

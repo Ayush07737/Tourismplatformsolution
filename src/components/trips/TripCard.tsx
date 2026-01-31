@@ -1,11 +1,15 @@
-import { Calendar, MapPin, Users } from 'lucide-react';
+import { Calendar, MapPin, Users, Trash2 } from 'lucide-react';
+import { Button } from '../ui/button';
 import type { Trip } from '../../api/trips';
 
 type TripCardProps = {
   trip: Trip;
+  showDelete?: boolean;
+  onDelete?: (tripId: string) => void;
+  deleting?: boolean;
 };
 
-export function TripCard({ trip }: TripCardProps) {
+export function TripCard({ trip, showDelete, onDelete, deleting }: TripCardProps) {
   const seatsLeft = trip.maxTravelers - trip.currentTravelers;
 
   return (
@@ -19,9 +23,22 @@ export function TripCard({ trip }: TripCardProps) {
             {trip.destination.city}
           </p>
         </div>
-        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary capitalize">
-          {trip.tripType || 'trip'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary capitalize">
+            {trip.tripType || 'trip'}
+          </span>
+          {showDelete && onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(trip.id)}
+              disabled={deleting}
+              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mt-2">

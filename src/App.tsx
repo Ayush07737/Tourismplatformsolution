@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Navbar } from './components/navbar';
 import { GeoapifyLocationPicker } from './components/geoapify-location-picker';
 import { DestinationCard } from './components/destination-card';
@@ -16,6 +17,9 @@ import { ImageWithFallback } from './components/figma/ImageWithFallback';
 import { Users, Star, MapPin, Calendar } from 'lucide-react';
 import { ExploreTripsPage } from './pages/ExploreTripsPage';
 import { CreateTripPage } from './pages/CreateTripPage';
+import { Profile } from './pages/Profile';
+import { TripCard } from './components/trips/TripCard';
+import { fetchUserTrips, deleteTrip, fetchNearbyTrips, type Trip } from './api/trips';
 
 // Mock data (navbar user from Clerk useUser)
 const mockTravelers = [
@@ -224,9 +228,47 @@ const mockEmptyUserProfile = {
   reviews: []
 };
 
+// Function to create user profile from authenticated user
+function createUserProfileFromAuth(user: any, tripCount: number = 0) {
+  if (!user) return null;
+
+  const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.primaryEmailAddress?.emailAddress || 'Traveler';
+  
+  return {
+    id: user.id,
+    name,
+    avatar: user.imageUrl ?? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+    rating: 4.5, // Default rating for new users
+    level: tripCount > 5 ? 'Explorer' : 'Wanderer',
+    followers: 0,
+    following: 0,
+    yatraCoins: 100 + (tripCount * 10), // Starting coins + bonus per trip
+    bio: 'Adventure awaits! Ready to explore the world and make new friends.',
+    location: 'India', // Default location
+    joinDate: new Date(user.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    tripCount,
+    interests: ['Adventure', 'Culture', 'Food'],
+    gallery: [],
+    experiences: [],
+    reviews: [],
+    stories: [],
+    badges: [
+      { id: 'b1', name: 'New Explorer', icon: '🎒', description: 'Started your journey' },
+      ...(tripCount > 0 ? [{ id: 'b2', name: 'First Trip', icon: '✈️', description: 'Completed your first trip' }] : [])
+    ],
+    travelStats: {
+      countriesVisited: Math.min(tripCount, 10),
+      citiesExplored: tripCount * 2,
+      totalDistance: `${tripCount * 500} km`,
+      favTransport: 'Bus'
+    }
+  };
+}
+
 export default function App() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('home');
   const [currentLocation, setCurrentLocation] = useState('');
   const [destination, setDestination] = useState('');
@@ -236,13 +278,28 @@ export default function App() {
   const [viewingFullProfile, setViewingFullProfile] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [nearbyTravelers, setNearbyTravelers] = useState(mockTravelers);
+  const [userTrips, setUserTrips] = useState<Trip[]>([]);
+  const [loadingUserTrips, setLoadingUserTrips] = useState(false);
+  const [userTripsError, setUserTripsError] = useState<string | null>(null);
+  const [communityTrips, setCommunityTrips] = useState<Trip[]>([]);
+  const [loadingCommunityTrips, setLoadingCommunityTrips] = useState(false);
+
+  useEffect(() => {
+    if (currentPage === 'mytrips') {
+      loadUserTrips();
+    } else if (currentPage === 'community') {
+      loadCommunityTrips();
+    }
+  }, [currentPage]);
+
+  // Create current user profile from auth
+  const currentUserProfile = createUserProfileFromAuth(user, userTrips.length);
 
   // Navbar expects { name, avatar, yatraCoins, notifications, messages }
-  const name = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') || user.primaryEmailAddress?.emailAddress || 'Traveler' : '';
   const navbarUser = user ? {
-    name,
-    avatar: user.imageUrl ?? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-    yatraCoins: 0,
+    name: currentUserProfile?.name || '',
+    avatar: currentUserProfile?.avatar || '',
+    yatraCoins: currentUserProfile?.yatraCoins || 0,
     notifications: 0,
     messages: 0,
   } : undefined;
@@ -265,6 +322,44 @@ export default function App() {
     alert(`Viewing destination details for ${destinationId}`);
   };
 
+  const loadUserTrips = async () => {
+    if (!user?.id) return;
+    try {
+      setLoadingUserTrips(true);
+      setUserTripsError(null);
+      const trips = await fetchUserTrips(user.id);
+      setUserTrips(trips);
+    } catch (err: any) {
+      setUserTripsError(err.message || 'Failed to load trips');
+    } finally {
+      setLoadingUserTrips(false);
+    }
+  };
+
+  const handleDeleteTrip = async (tripId: string) => {
+    if (!confirm('Are you sure you want to delete this trip?')) return;
+    try {
+      await deleteTrip(tripId);
+      setUserTrips(prev => prev.filter(t => t.id !== tripId));
+      // Refresh community trips as well
+      loadCommunityTrips();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete trip');
+    }
+  };
+
+  const loadCommunityTrips = async () => {
+    try {
+      setLoadingCommunityTrips(true);
+      const trips = await fetchNearbyTrips({ radiusKm: 100 });
+      setCommunityTrips(trips.slice(0, 5)); // Show only recent 5
+    } catch (err: any) {
+      // Ignore errors for community feed
+    } finally {
+      setLoadingCommunityTrips(false);
+    }
+  };
+
   const handleMessage = (userId: string) => {
     alert(`Opening chat with user ${userId}`);
   };
@@ -279,7 +374,11 @@ export default function App() {
   };
 
   const handleNavigate = (page: string) => {
-    setCurrentPage(page);
+    if (page === 'home') {
+      navigate('/');
+    } else {
+      navigate(`/${page}`);
+    }
   };
 
   const handleNavigateToHome = () => {
@@ -289,10 +388,12 @@ export default function App() {
   };
 
   const handleViewFullProfile = (userId: string) => {
-    const profile = (userId.startsWith('search-') || userId === '2') 
-      ? mockEmptyUserProfile 
-      : mockUserProfile;
-    setSelectedUser(profile);
+    if (userId === user?.id && currentUserProfile) {
+      setSelectedUser(currentUserProfile);
+    } else {
+      // For demo purposes, show mock profile for other users
+      setSelectedUser(mockEmptyUserProfile);
+    }
     setShowUserProfile(false);
     setViewingFullProfile(true);
   };
@@ -308,9 +409,12 @@ export default function App() {
     setSelectedUser(updatedUser);
   };
 
-  const handleBackFromProfile = () => {
-    setViewingFullProfile(false);
-    setEditingProfile(false);
+  const handleViewOwnProfile = () => {
+    if (currentUserProfile) {
+      setSelectedUser(currentUserProfile);
+      setShowUserProfile(false);
+      setViewingFullProfile(true);
+    }
   };
 
   const renderHomePage = () => (
@@ -543,7 +647,7 @@ export default function App() {
               <MapPin className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">5</p>
+              <p className="text-2xl font-bold">{userTrips.length}</p>
               <p className="text-muted-foreground text-sm">Total Trips</p>
             </div>
           </div>
@@ -555,7 +659,7 @@ export default function App() {
               <Users className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">3</p>
+              <p className="text-2xl font-bold">{userTrips.filter(t => t.status === 'completed').length}</p>
               <p className="text-muted-foreground text-sm">Completed</p>
             </div>
           </div>
@@ -567,7 +671,7 @@ export default function App() {
               <Calendar className="h-6 w-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">2</p>
+              <p className="text-2xl font-bold">{userTrips.filter(t => new Date(t.startDate) > new Date()).length}</p>
               <p className="text-muted-foreground text-sm">Upcoming</p>
             </div>
           </div>
@@ -586,15 +690,36 @@ export default function App() {
         </Card>
       </div>
       
-      <div className="text-center py-12">
-        <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-xl font-medium mb-2">No trips yet</h3>
-        <p className="text-muted-foreground mb-4">Start planning your first adventure!</p>
-        <Button onClick={() => handleNavigate('explore')}>Explore Destinations</Button>
-      </div>
-  const renderCreateTripPage = () => (
-    <CreateTripPage onTripCreated={() => handleNavigate('explore')} />
-  );
+      {loadingUserTrips ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading your trips...</p>
+        </div>
+      ) : userTripsError ? (
+        <div className="text-center py-12">
+          <p className="text-red-500">{userTripsError}</p>
+          <Button onClick={loadUserTrips} className="mt-4">
+            Try Again
+          </Button>
+        </div>
+      ) : userTrips.length === 0 ? (
+        <div className="text-center py-12">
+          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-medium mb-2">No trips yet</h3>
+          <p className="text-muted-foreground mb-4">Start planning your first adventure!</p>
+          <Button onClick={() => handleNavigate('explore')}>Explore Destinations</Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {userTrips.map((trip) => (
+            <TripCard
+              key={trip._id}
+              trip={trip}
+              showDelete={true}
+              onDelete={handleDeleteTrip}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -664,66 +789,109 @@ export default function App() {
           </div>
         </Card>
       </div>
+
+      <div className="mt-8">
+        <h3 className="text-xl font-semibold mb-4">Recent Trips</h3>
+        {loadingCommunityTrips ? (
+          <p className="text-muted-foreground">Loading trips...</p>
+        ) : communityTrips.length === 0 ? (
+          <p className="text-muted-foreground">No recent trips to show.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {communityTrips.map((trip) => (
+              <TripCard key={trip._id} trip={trip} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 
-  // Show Full Profile Page
-  if (viewingFullProfile && selectedUser) {
-    return (
-      <FullProfilePage
-        user={selectedUser}
-        isOwnProfile={selectedUser.id === '1'} // In real app, check against logged-in user
-        onBack={handleBackFromProfile}
-        onEdit={handleEditProfile}
-        onLogout={() => signOut?.({ redirectUrl: window.location.origin })}
-        onConnect={handleConnect}
-        onMessage={handleMessage}
-      />
-    );
-  }
-
-  // Show Profile Edit Page
-  if (editingProfile && selectedUser) {
-    return (
-      <ProfileEditPage
-        user={selectedUser}
-        onBack={handleBackFromProfile}
-        onSave={handleSaveProfile}
-        onLogout={() => signOut?.({ redirectUrl: window.location.origin })}
-      />
-    );
-  }
+  const renderCreateTripPage = () => (
+    <CreateTripPage onTripCreated={() => {
+      handleNavigate('mytrips');
+      loadUserTrips(); // Refresh trips
+    }} />
+  );
 
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
-      <Navbar 
-        user={navbarUser}
-        currentPage={currentPage}
-        onLogin={() => {}}
-        onLogout={() => signOut?.({ redirectUrl: window.location.origin })}
-        onNavigate={handleNavigate}
-      />
-      
-      {/* Render different pages based on currentPage */}
-      {currentPage === 'home' && renderHomePage()}
-      {currentPage === 'explore' && renderExplorePage()}
-      {currentPage === 'mytrips' && renderMyTripsPage()}
-      {currentPage === 'community' && renderCommunityPage()}
-      {currentPage === 'create-trip' && renderCreateTripPage()}
-
-      {/* User Profile Modal */}
-      {selectedUser && (
-        <UserProfileModal
-          user={selectedUser}
-          isOpen={showUserProfile}
-          onClose={() => setShowUserProfile(false)}
-          onConnect={handleConnect}
-          onMessage={handleMessage}
-          onNavigateToHome={handleNavigateToHome}
-          onViewFullProfile={handleViewFullProfile}
-        />
-      )}
+      <Routes>
+        <Route path="/profile/me" element={<Profile />} />
+        <Route path="/explore" element={
+          <>
+            <Navbar 
+              user={navbarUser}
+              currentPage="explore"
+              onLogin={() => {}}
+              onNavigate={handleNavigate}
+              onViewProfile={() => navigate('/profile/me')}
+            />
+            {renderExplorePage()}
+          </>
+        } />
+        <Route path="/mytrips" element={
+          <>
+            <Navbar 
+              user={navbarUser}
+              currentPage="mytrips"
+              onLogin={() => {}}
+              onNavigate={handleNavigate}
+              onViewProfile={() => navigate('/profile/me')}
+            />
+            {renderMyTripsPage()}
+          </>
+        } />
+        <Route path="/community" element={
+          <>
+            <Navbar 
+              user={navbarUser}
+              currentPage="community"
+              onLogin={() => {}}
+              onNavigate={handleNavigate}
+              onViewProfile={() => navigate('/profile/me')}
+            />
+            {renderCommunityPage()}
+          </>
+        } />
+        <Route path="/create-trip" element={
+          <>
+            <Navbar 
+              user={navbarUser}
+              currentPage="create-trip"
+              onLogin={() => {}}
+              onNavigate={handleNavigate}
+              onViewProfile={() => navigate('/profile/me')}
+            />
+            {renderCreateTripPage()}
+          </>
+        } />
+        <Route path="/" element={
+          <>
+            <Navbar 
+              user={navbarUser}
+              currentPage="home"
+              onLogin={() => {}}
+              onNavigate={handleNavigate}
+              onViewProfile={() => navigate('/profile/me')}
+            />
+            {renderHomePage()}
+            {/* User Profile Modal */}
+            {selectedUser && (
+              <UserProfileModal
+                user={selectedUser}
+                isOpen={showUserProfile}
+                onClose={() => setShowUserProfile(false)}
+                onConnect={handleConnect}
+                onMessage={handleMessage}
+                onNavigateToHome={handleNavigateToHome}
+                onViewFullProfile={handleViewFullProfile}
+              />
+            )}
+          </>
+        } />
+      </Routes>
     </div>
   );
 }

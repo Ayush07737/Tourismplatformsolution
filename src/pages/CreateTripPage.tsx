@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { createTrip, type TripPayload } from '../api/trips';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -22,6 +23,7 @@ type CreateTripPageProps = {
 
 export function CreateTripPage({ onTripCreated }: CreateTripPageProps) {
   const navigate = useNavigate();
+  const { user } = useUser();
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
@@ -107,7 +109,11 @@ export function CreateTripPage({ onTripCreated }: CreateTripPageProps) {
 
     try {
       setSubmitting(true);
-      await createTrip(payload);
+      if (!user?.id) {
+        toast.error('User not authenticated');
+        return;
+      }
+      await createTrip(payload, user.id);
       toast.success('Trip posted successfully!');
       if (onTripCreated) {
         onTripCreated();

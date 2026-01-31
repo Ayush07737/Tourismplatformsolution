@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useUser } from '@clerk/clerk-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -32,6 +33,8 @@ interface ProfileEditPageProps {
 }
 
 export function ProfileEditPage({ user, onBack, onSave, onLogout }: ProfileEditPageProps) {
+  const { user: currentUser } = useUser();
+  const isOwnProfile = user.id === currentUser?.id;
   const [editedUser, setEditedUser] = useState(user);
   const [activeTab, setActiveTab] = useState('basic');
 
@@ -199,7 +202,7 @@ export function ProfileEditPage({ user, onBack, onSave, onLogout }: ProfileEditP
               <h1 className="text-xl font-semibold">Edit Profile</h1>
             </div>
             <div className="flex items-center gap-2">
-              {onLogout && (
+              {onLogout && isOwnProfile && (
                 <Button variant="outline" onClick={onLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Log out
